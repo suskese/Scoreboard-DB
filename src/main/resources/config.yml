@@ -1,0 +1,28 @@
+# Database configuration for ScoreboardDBPlugin
+
+# If use-local = true, plugin uses embedded SQLite stored in plugin folder as data.db
+use-local: true
+
+# Sync every X seconds
+sync-interval: 600
+
+# Local DB filename (in plugin data folder)
+local:
+  filename: data.db
+
+# Remote DB settings (only used if use-local: false)
+remote:
+  # JDBC URL, e.g., for PostgreSQL: jdbc:postgresql://host:port/database
+  url: "jdbc:postgresql://host:port/postgres"
+  username: "postgres"
+  password: "password"
+  # (Optional) Pool settings:
+  minimum-idle: 2
+  maximum-pool-size: 10
+  connection-timeout: 30000  # ms
+
+# Velocity integration: if true, attempt to obtain server name via plugin messaging; else fallback to config value.
+velocity:
+  enabled: false
+  # Fallback server name if not using Velocity messaging or if unavailable.
+  server-name: "default-server"

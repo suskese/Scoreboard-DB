@@ -1,0 +1,9 @@
+name: ScoreboardDBPlugin
+main: me.mklv.scoreboarddbplugin.ScoreboardDBPlugin
+version: 1.0
+api-version: 1.20
+commands:
+  scoreboarddb:
+    description: Main command for ScoreboardDBPlugin
+    usage: /<command> <save|get|sync-now> [args]
+    permission: scoreboarddb.use
