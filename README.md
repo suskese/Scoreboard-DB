@@ -17,7 +17,7 @@ A Minecraft Paper plugin (1.20.1+) for storing scoreboard data in a local or rem
 
 ## Building
 - Requires Java 17+
-- Build with Maven: `mvn package`
+- Build with Maven: `gradle build`
 
 ## Dependencies
 - Paper API 1.20.1+

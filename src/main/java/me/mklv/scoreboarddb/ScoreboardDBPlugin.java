@@ -53,7 +53,7 @@ public class ScoreboardDBPlugin extends JavaPlugin implements PluginMessageListe
             requestVelocityServerName();
         }
         startSyncTask();
-        getLogger().info("ScoreboardDBPlugin enabled!");
+        getLogger().info("Plugin enabled!");
     }
 
     private void requestVelocityServerName() {
@@ -71,7 +71,7 @@ public class ScoreboardDBPlugin extends JavaPlugin implements PluginMessageListe
         if (!channel.equals("velocity:server")) return;
         String name = new String(message);
         velocityServerName.set(name);
-        getLogger().info("[ScoreboardDBPlugin] Velocity server name received: " + name);
+        getLogger().info("Velocity server name received: " + name);
     }
 
     @Override
@@ -83,7 +83,7 @@ public class ScoreboardDBPlugin extends JavaPlugin implements PluginMessageListe
         if (syncTask != null) {
             syncTask.cancel();
         }
-        getLogger().info("ScoreboardDBPlugin disabled!");
+        getLogger().info("Plugin disabled!");
     }
 
     public void startSyncTask() {

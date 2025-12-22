@@ -1,10 +1,10 @@
 name: ScoreboardDB
 main: me.mklv.scoreboarddb.ScoreboardDBPlugin
-version: 1.0
+version: ${version}
 api-version: 1.20
 commands:
   scoreboarddb:
     aliases: [sbdb]
-    description: Main command for ScoreboardDBPlugin
+    description: Main command for ScoreboardDB
     usage: /<command> <save|get|sync-now> [args]
     permission: scoreboarddb.use

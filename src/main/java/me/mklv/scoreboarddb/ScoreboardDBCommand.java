@@ -7,7 +7,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.scoreboard.Scoreboard;
 import org.bukkit.scoreboard.ScoreboardManager;
 import org.bukkit.scoreboard.Objective;
-import org.bukkit.scoreboard.Score;
+// import org.bukkit.scoreboard.Score;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;

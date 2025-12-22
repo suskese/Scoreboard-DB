@@ -4,7 +4,7 @@ plugins {
 }
 
 group = "me.mklv"
-version = "1.0-SNAPSHOT"
+version = rootProject.version
 
 java {
     sourceCompatibility = JavaVersion.VERSION_17
@@ -24,9 +24,12 @@ dependencies {
     // Shaded dependencies
     implementation("org.yaml:snakeyaml:2.2")
     implementation("com.zaxxer:HikariCP:5.1.0")
-    implementation("org.xerial:sqlite-jdbc:3.45.1.0")
-    implementation("com.mysql:mysql-connector-j:8.4.0")
-    implementation("org.postgresql:postgresql:42.7.3")
+
+    // JDBC drivers and connection pooling provided by server
+    
+    compileOnly("org.xerial:sqlite-jdbc:3.45.1.0")
+    compileOnly("com.mysql:mysql-connector-j:8.4.0")
+    compileOnly("org.postgresql:postgresql:42.7.3")
 }
 
 tasks {
