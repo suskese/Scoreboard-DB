@@ -22,6 +22,7 @@ public class ScoreboardDBPlugin extends JavaPlugin implements PluginMessageListe
     private DatabaseManager databaseManager;
     private static ScoreboardDBPlugin instance;
     private BukkitRunnable syncTask;
+    private int syncTaskId = -1;
 
     private final AtomicReference<String> velocityServerName = new AtomicReference<>(null);
     private boolean velocityEnabled = false;
@@ -80,49 +81,90 @@ public class ScoreboardDBPlugin extends JavaPlugin implements PluginMessageListe
         if (databaseManager != null) {
             databaseManager.close();
         }
-        if (syncTask != null) {
-            syncTask.cancel();
+        if (syncTaskId >= 0) {
+            Bukkit.getScheduler().cancelTask(syncTaskId);
         }
         getLogger().info("Plugin disabled!");
     }
 
     public void startSyncTask() {
         int interval = configLoader.getSyncInterval();
-        if (syncTask != null) {
-            syncTask.cancel();
+        if (syncTaskId >= 0) {
+            Bukkit.getScheduler().cancelTask(syncTaskId);
         }
         // If sync-interval is 0, disable automatic sync
         if (interval <= 0) {
             getLogger().info("Automatic sync disabled (sync-interval: 0). Use /scoreboarddb sync-now for manual sync.");
             return;
         }
-        syncTask = new BukkitRunnable() {
-            @Override
-            public void run() {
-                syncDatabase();
+        
+        // Check if Folia is available
+        if (isFoliaAvailable()) {
+            // Use Folia-compatible globalRegionScheduler
+            try {
+                Object globalScheduler = Bukkit.class.getMethod("getGlobalRegionScheduler").invoke(null);
+                java.lang.reflect.Method runAtFixedRate = globalScheduler.getClass()
+                    .getMethod("runAtFixedRate", 
+                        org.bukkit.plugin.Plugin.class,
+                        java.util.function.Consumer.class,
+                        long.class,
+                        long.class);
+                runAtFixedRate.invoke(globalScheduler, this, (java.util.function.Consumer<Object>) task -> {
+                    syncDatabase();
+                }, interval * 20L, interval * 20L);
+                getLogger().info("Using Folia globalRegionScheduler for sync task");
+            } catch (Exception e) {
+                getLogger().severe("Failed to use Folia scheduler: " + e.getMessage());
+                e.printStackTrace();
             }
-        };
-        syncTask.runTaskTimerAsynchronously(this, interval * 20L, interval * 20L);
+        } else {
+            // Use async scheduler for Paper
+            syncTask = new BukkitRunnable() {
+                @Override
+                public void run() {
+                    syncDatabase();
+                }
+            };
+            syncTaskId = syncTask.runTaskTimerAsynchronously(this, interval * 20L, interval * 20L).getTaskId();
+        }
+    }
+
+    private boolean isFoliaAvailable() {
+        try {
+            Class.forName("io.papermc.paper.threadedregions.RegionizedServer");
+            return true;
+        } catch (ClassNotFoundException e) {
+            return false;
+        }
     }
 
     public void syncDatabase() {
-        getLogger().info("Starting async scoreboard sync...");
-        Bukkit.getScheduler().runTaskAsynchronously(this, () -> {
-            try {
-                String mode = configLoader.getSyncMode();
-                if (!mode.equals("PUSH")) {
-                    getLogger().info("Pulling scoreboard from DB...");
-                    pullScoreboardFromDB();
-                }
-                if (!mode.equals("PULL")) {
-                    getLogger().info("Pushing scoreboard to DB...");
-                    pushScoreboardToDB();
-                }
-                getLogger().info("Sync complete");
-            } catch (Exception e) {
-                getLogger().severe("Sync failed: " + e.getMessage());
+        getLogger().info("Starting scoreboard sync...");
+        
+        if (isFoliaAvailable()) {
+            // On Folia, run directly since globalRegionScheduler is already async-safe
+            performSync();
+        } else {
+            // On Paper, use async scheduler
+            Bukkit.getScheduler().runTaskAsynchronously(this, this::performSync);
+        }
+    }
+
+    private void performSync() {
+        try {
+            String mode = configLoader.getSyncMode();
+            if (!mode.equals("PUSH")) {
+                getLogger().info("Pulling scoreboard from DB...");
+                pullScoreboardFromDB();
             }
-        });
+            if (!mode.equals("PULL")) {
+                getLogger().info("Pushing scoreboard to DB...");
+                pushScoreboardToDB();
+            }
+            getLogger().info("Sync complete");
+        } catch (Exception e) {
+            getLogger().severe("Sync failed: " + e.getMessage());
+        }
     }
 
     private void pushScoreboardToDB() {

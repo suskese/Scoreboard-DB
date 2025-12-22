@@ -24,15 +24,20 @@ dependencies {
     // Shaded dependencies
     implementation("org.yaml:snakeyaml:2.2")
     implementation("com.zaxxer:HikariCP:5.1.0")
-
+    implementation("org.postgresql:postgresql:42.7.3")
     // JDBC drivers and connection pooling provided by server
     
     compileOnly("org.xerial:sqlite-jdbc:3.45.1.0")
     compileOnly("com.mysql:mysql-connector-j:8.4.0")
-    compileOnly("org.postgresql:postgresql:42.7.3")
 }
 
 tasks {
+    processResources {
+        filesMatching("plugin.yml") {
+            expand(mapOf("version" to project.version))
+        }
+    }
+
     shadowJar {
         relocate("org.yaml.snakeyaml", "me.mklv.shaded.snakeyaml")
         archiveFileName.set("${project.name}-${project.version}.jar")
