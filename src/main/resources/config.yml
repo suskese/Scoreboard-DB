@@ -3,8 +3,11 @@
 # If use-local = true, plugin uses embedded SQLite stored in plugin folder as data.db
 use-local: true
 
-# Sync every X seconds
+# Sync every X seconds (set to 0 to disable automatic sync, only manual /scoreboarddb sync-now)
 sync-interval: 600
+
+# Sync mode: Both (pull from DB and push to DB), Push (only push to DB), Pull (only pull from DB)
+sync-mode: Both
 
 # Local DB filename (in plugin data folder)
 local:

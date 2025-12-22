@@ -1,4 +1,4 @@
-# ScoreboardDBPlugin
+# ScoreboardDB
 
 A Minecraft Paper plugin (1.20.1+) for storing scoreboard data in a local or remote database (SQLite, MySQL, PostgreSQL). Supports Velocity integration, periodic sync, and configurable YAML.
 

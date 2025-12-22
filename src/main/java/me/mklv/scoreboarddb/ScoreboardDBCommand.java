@@ -1,8 +1,13 @@
-package me.mklv.scoreboarddbplugin;
+package me.mklv.scoreboarddb;
 
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabExecutor;
+import org.bukkit.Bukkit;
+import org.bukkit.scoreboard.Scoreboard;
+import org.bukkit.scoreboard.ScoreboardManager;
+import org.bukkit.scoreboard.Objective;
+import org.bukkit.scoreboard.Score;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -12,11 +17,9 @@ import java.util.Collections;
 import java.util.List;
 
 public class ScoreboardDBCommand implements TabExecutor {
-    private final ScoreboardDBPlugin plugin;
     private final DatabaseManager dbManager;
 
     public ScoreboardDBCommand(ScoreboardDBPlugin plugin, DatabaseManager dbManager) {
-        this.plugin = plugin;
         this.dbManager = dbManager;
     }
 
@@ -108,8 +111,110 @@ public class ScoreboardDBCommand implements TabExecutor {
         if (args.length == 1) {
             List<String> subs = new ArrayList<>();
             Collections.addAll(subs, "save", "get", "sync-now");
-            return subs;
+            return filterSuggestions(subs, args[0]);
+        }
+        // Tab complete for save command
+        if (args[0].equalsIgnoreCase("save")) {
+            if (args.length == 2) {
+                return filterSuggestions(getBukkitScoreboardNames(), args[1]);
+            } else if (args.length == 3) {
+                return filterSuggestions(getBukkitEntryNames(args[1]), args[2]);
+            }
+        }
+        // Tab complete for get command
+        if (args[0].equalsIgnoreCase("get")) {
+            if (args.length == 2) {
+                return filterSuggestions(getDatabaseScoreboardNames(), args[1]);
+            } else if (args.length == 3) {
+                return filterSuggestions(getDatabaseEntryNames(args[1]), args[2]);
+            }
         }
         return Collections.emptyList();
+    }
+
+    private List<String> filterSuggestions(List<String> suggestions, String input) {
+        List<String> filtered = new ArrayList<>();
+        String lowerInput = input.toLowerCase();
+        for (String suggestion : suggestions) {
+            if (suggestion.toLowerCase().startsWith(lowerInput)) {
+                filtered.add(suggestion);
+            }
+        }
+        return filtered;
+    }
+
+    private List<String> getBukkitScoreboardNames() {
+        List<String> scoreboards = new ArrayList<>();
+        ScoreboardManager manager = Bukkit.getScoreboardManager();
+        if (manager == null) return scoreboards;
+        Scoreboard scoreboard = manager.getMainScoreboard();
+        for (Objective obj : scoreboard.getObjectives()) {
+            scoreboards.add(obj.getName());
+        }
+        return scoreboards;
+    }
+
+    private List<String> getBukkitEntryNames(String scoreboardName) {
+        List<String> entries = new ArrayList<>();
+        ScoreboardManager manager = Bukkit.getScoreboardManager();
+        if (manager == null) return entries;
+        Scoreboard scoreboard = manager.getMainScoreboard();
+        Objective obj = scoreboard.getObjective(scoreboardName);
+        if (obj != null) {
+            // Get all entries and filter to only those with scores in this objective
+            for (String entry : scoreboard.getEntries()) {
+                try {
+                    if (obj.getScore(entry).isScoreSet()) {
+                        entries.add(entry);
+                    }
+                } catch (IllegalStateException ignore) {
+                    // Entry does not have a score for this objective
+                }
+            }
+        }
+        return entries;
+    }
+
+    private List<String> getScoreboardNames() {
+        List<String> scoreboards = new ArrayList<>();
+        String serverName = ScoreboardDBPlugin.getInstance().getServerName();
+        try (Connection conn = dbManager.getDataSource().getConnection()) {
+            String sql = "SELECT DISTINCT scoreboard_name FROM scoreboard_data WHERE server_name = ? ORDER BY scoreboard_name";
+            try (PreparedStatement ps = conn.prepareStatement(sql)) {
+                ps.setString(1, serverName);
+                try (ResultSet rs = ps.executeQuery()) {
+                    while (rs.next()) {
+                        scoreboards.add(rs.getString("scoreboard_name"));
+                    }
+                }
+            }
+        } catch (Exception e) {
+            // Silently fail, return empty list
+        }
+        return scoreboards;
+    }
+
+    private List<String> getDatabaseScoreboardNames() {
+        return getScoreboardNames();
+    }
+
+    private List<String> getDatabaseEntryNames(String scoreboardName) {
+        List<String> entries = new ArrayList<>();
+        String serverName = ScoreboardDBPlugin.getInstance().getServerName();
+        try (Connection conn = dbManager.getDataSource().getConnection()) {
+            String sql = "SELECT DISTINCT string FROM scoreboard_data WHERE server_name = ? AND scoreboard_name = ? ORDER BY string";
+            try (PreparedStatement ps = conn.prepareStatement(sql)) {
+                ps.setString(1, serverName);
+                ps.setString(2, scoreboardName);
+                try (ResultSet rs = ps.executeQuery()) {
+                    while (rs.next()) {
+                        entries.add(rs.getString("string"));
+                    }
+                }
+            }
+        } catch (Exception e) {
+            // Silently fail, return empty list
+        }
+        return entries;
     }
 }

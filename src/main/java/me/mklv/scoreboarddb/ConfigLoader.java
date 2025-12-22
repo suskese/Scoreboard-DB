@@ -1,4 +1,4 @@
-package me.mklv.scoreboarddbplugin;
+package me.mklv.scoreboarddb;
 
 import org.yaml.snakeyaml.Yaml;
 import java.io.File;
@@ -15,7 +15,6 @@ public class ConfigLoader {
         loadConfig();
     }
 
-    @SuppressWarnings("unchecked")
     public void loadConfig() {
         try {
             File configFile = new File(plugin.getDataFolder(), "config.yml");
@@ -73,5 +72,15 @@ public class ConfigLoader {
             return velocity.getOrDefault("server-name", "default-server").toString();
         }
         return "default-server";
+    }
+
+    public String getSyncMode() {
+        Object mode = config.get("sync-mode");
+        if (mode == null) return "Both"; // Default to Both
+        String modeStr = mode.toString().toUpperCase();
+        if (modeStr.equals("PUSH") || modeStr.equals("PULL") || modeStr.equals("BOTH")) {
+            return modeStr;
+        }
+        return "Both"; // Default if invalid
     }
 }

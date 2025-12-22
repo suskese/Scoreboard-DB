@@ -1,4 +1,4 @@
-package me.mklv.scoreboarddbplugin;
+package me.mklv.scoreboarddb;
 
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;

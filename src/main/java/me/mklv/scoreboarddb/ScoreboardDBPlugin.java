@@ -1,4 +1,4 @@
-package me.mklv.scoreboarddbplugin;
+package me.mklv.scoreboarddb;
 
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
@@ -91,6 +91,11 @@ public class ScoreboardDBPlugin extends JavaPlugin implements PluginMessageListe
         if (syncTask != null) {
             syncTask.cancel();
         }
+        // If sync-interval is 0, disable automatic sync
+        if (interval <= 0) {
+            getLogger().info("Automatic sync disabled (sync-interval: 0). Use /scoreboarddb sync-now for manual sync.");
+            return;
+        }
         syncTask = new BukkitRunnable() {
             @Override
             public void run() {
@@ -101,16 +106,21 @@ public class ScoreboardDBPlugin extends JavaPlugin implements PluginMessageListe
     }
 
     public void syncDatabase() {
-        getLogger().info("[ScoreboardDBPlugin] Starting async scoreboard sync...");
+        getLogger().info("Starting async scoreboard sync...");
         Bukkit.getScheduler().runTaskAsynchronously(this, () -> {
             try {
-                getLogger().info("[ScoreboardDBPlugin] Pulling scoreboard from DB...");
-                pullScoreboardFromDB();
-                getLogger().info("[ScoreboardDBPlugin] Pushing scoreboard to DB...");
-                pushScoreboardToDB();
-                getLogger().info("[ScoreboardDBPlugin] Sync complete");
+                String mode = configLoader.getSyncMode();
+                if (!mode.equals("PUSH")) {
+                    getLogger().info("Pulling scoreboard from DB...");
+                    pullScoreboardFromDB();
+                }
+                if (!mode.equals("PULL")) {
+                    getLogger().info("Pushing scoreboard to DB...");
+                    pushScoreboardToDB();
+                }
+                getLogger().info("Sync complete");
             } catch (Exception e) {
-                getLogger().severe("[ScoreboardDBPlugin] Sync failed: " + e.getMessage());
+                getLogger().severe("Sync failed: " + e.getMessage());
             }
         });
     }
