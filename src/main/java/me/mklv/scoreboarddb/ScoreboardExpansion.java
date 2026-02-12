@@ -15,6 +15,7 @@ import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -52,6 +53,17 @@ public class ScoreboardExpansion extends PlaceholderExpansion {
     }
 
     @Override
+    public @NotNull List<String> getPlaceholders() {
+        return List.of(
+                "%sdb_<objective>%",
+                "%sdb_<objective>_<entry>%",
+                "%sdb_<objective>_{@}%",
+                "%sdb_db_<objective>_<entry>%",
+                "%sdb_db_<objective>_{@}%"
+        );
+    }
+
+    @Override
     public @Nullable String onPlaceholderRequest(Player player, @NotNull String params) {
         if (!configLoader.isPlaceholdersEnabled()) {
             return null;
@@ -67,11 +79,6 @@ public class ScoreboardExpansion extends PlaceholderExpansion {
         long cacheMs = refreshInterval > 0 ? refreshInterval * 1000L : CACHE_DURATION_MS;
 
         cache.entrySet().removeIf(entry -> currentTime - entry.getValue().timestamp > cacheMs);
-
-        // Parse placeholders:
-        // %sdb_{name}% - get display name of scoreboard
-        // %sdb_{name}_{player}_value% - get value from local server scoreboard
-        // %sdb_db_{name}_{player}_value% - get value from database (cloud)
 
         if (params.startsWith("db_")) {
             return handleDatabasePlaceholder(player, params.substring(3));
