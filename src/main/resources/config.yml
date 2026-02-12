@@ -9,6 +9,14 @@ sync-interval: 600
 # Sync mode: Both (pull from DB and push to DB), Push (only push to DB), Pull (only pull from DB)
 sync-mode: Both
 
+# Only push scores for online players (recommended for large servers)
+sync-online-only: false
+
+# Auto sync after a player joins (useful for networked servers)
+auto-sync-on-join: false
+# Minimum seconds between join-triggered syncs
+join-sync-debounce-seconds: 10
+
 # Local DB filename (in plugin data folder)
 local:
   filename: data.db
@@ -24,8 +32,13 @@ remote:
   maximum-pool-size: 10
   connection-timeout: 30000  # ms
 
-# Velocity integration: if true, attempt to obtain server name via plugin messaging; else fallback to config value.
+# Velocity integration: Set custom name if used multiple servers and one db
 velocity:
   enabled: false
-  # Fallback server name if not using Velocity messaging or if unavailable.
   server-name: "default-server"
+# PlaceholderAPI integration
+placeholders:
+  # Enable PlaceholderAPI expansion support
+  enabled: true
+  # Refresh interval for placeholder caching in seconds (set to 0 to disable caching)
+  refresh-interval: 30

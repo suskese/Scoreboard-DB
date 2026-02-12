@@ -1,14 +1,18 @@
 # ScoreboardDB
 
-A Minecraft Paper plugin (1.20.1+) for storing scoreboard data in a local or remote database (SQLite, MySQL, PostgreSQL). Supports Velocity integration, periodic sync, and configurable YAML.
+A Minecraft Paper/Folia plugin (1.20.1+) for storing scoreboard data in a local or remote database (SQLite, MySQL, MariaDB, PostgreSQL). Periodic sync, join-triggered sync, and configurable YAML.
 
 ## Features
-- Stores scoreboard data in a database (local SQLite, or remote MySQL/PostgreSQL)
-- Auto-creates tables: server name, scoreboard name, string, value
+- Stores scoreboard data in a database (local SQLite, or remote MySQL/MariaDB/PostgreSQL)
+- Auto-creates tables: server name, scoreboard name, string, value, per-scoreboard settings
 - YAML config (see `config.yml`)
-- Commands: save value, get value, sync-now
+- Commands: push, pull, get, mode, sync-now, refresh-cache
 - Periodic sync (configurable interval)
+- Auto sync on join (configurable, debounced)
+- Optional online-only push filtering
 - Velocity support for server name
+- PlaceholderAPI support with caching
+- Tab completion for subcommands, objectives, and entries
 
 ## Setup
 1. Place the plugin JAR in your server's `plugins` folder.
@@ -17,13 +21,14 @@ A Minecraft Paper plugin (1.20.1+) for storing scoreboard data in a local or rem
 
 ## Building
 - Requires Java 17+
-- Build with Maven: `gradle build`
+- Build with Gradle: `gradle build`
 
 ## Dependencies
 - Paper API 1.20.1+
 - HikariCP
 - SQLite JDBC
 - MySQL JDBC
+- MariaDB (via MySQL JDBC)
 - PostgreSQL JDBC
 - SnakeYAML
 

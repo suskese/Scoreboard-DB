@@ -2,10 +2,13 @@ name: ScoreboardDB
 main: me.mklv.scoreboarddb.ScoreboardDBPlugin
 version: ${version}
 api-version: "1.20"
+authors:
+  - IceVallish / Suskese
 folia-supported: true
+softdepend:
+  - PlaceholderAPI
 commands:
   scoreboarddb:
     aliases: [sbdb]
     description: Main command for ScoreboardDB
-    usage: /<command> <save|get|sync-now> [args]
-    permission: scoreboarddb.use
+    usage: /<command> <push|pull|sync-now|get|refresh-cache> [args]

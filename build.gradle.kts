@@ -1,6 +1,6 @@
 plugins {
     java
-    id("com.github.johnrengelman.shadow") version "8.1.1"
+    id ("com.gradleup.shadow") version "9.3.0"
 }
 
 group = "me.mklv"
@@ -15,11 +15,15 @@ repositories {
     mavenCentral()
     maven("https://repo.papermc.io/repository/maven-public/")
     maven("https://oss.sonatype.org/content/groups/public/")
+    maven("https://repo.extendedclip.com/releases/")
 }
 
 dependencies {
     // Paper API (provided by server)
     compileOnly("io.papermc.paper:paper-api:1.20.1-R0.1-SNAPSHOT")
+
+    // PlaceholderAPI (provided by server)
+    compileOnly("me.clip:placeholderapi:2.12.1")
 
     // Shaded dependencies
     implementation("org.yaml:snakeyaml:2.2")
@@ -32,9 +36,10 @@ dependencies {
 }
 
 tasks {
+    val pluginVersion = project.version.toString()
     processResources {
         filesMatching("plugin.yml") {
-            expand(mapOf("version" to project.version))
+            expand(mapOf("version" to pluginVersion))
         }
     }
 

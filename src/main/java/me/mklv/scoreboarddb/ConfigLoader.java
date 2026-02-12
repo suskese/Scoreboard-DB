@@ -83,4 +83,35 @@ public class ConfigLoader {
         }
         return "Both"; // Default if invalid
     }
+
+    @SuppressWarnings("unchecked")
+    public Map<String, Object> getPlaceholders() {
+        Object placeholders = config.get("placeholders");
+        return placeholders instanceof Map ? (Map<String, Object>) placeholders : null;
+    }
+
+    public boolean isPlaceholdersEnabled() {
+        Map<String, Object> placeholders = getPlaceholders();
+        return placeholders != null && Boolean.TRUE.equals(placeholders.getOrDefault("enabled", false));
+    }
+
+    public int getPlaceholderRefreshInterval() {
+        Map<String, Object> placeholders = getPlaceholders();
+        if (placeholders == null) return 30;
+        Object val = placeholders.get("refresh-interval");
+        return val instanceof Number ? ((Number) val).intValue() : 30;
+    }
+
+    public boolean isAutoSyncOnJoinEnabled() {
+        return Boolean.TRUE.equals(config.getOrDefault("auto-sync-on-join", false));
+    }
+
+    public int getJoinSyncDebounceSeconds() {
+        Object val = config.get("join-sync-debounce-seconds");
+        return val instanceof Number ? ((Number) val).intValue() : 10;
+    }
+
+    public boolean isSyncOnlineOnly() {
+        return Boolean.TRUE.equals(config.getOrDefault("sync-online-only", false));
+    }
 }

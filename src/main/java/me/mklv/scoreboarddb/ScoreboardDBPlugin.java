@@ -23,6 +23,7 @@ public class ScoreboardDBPlugin extends JavaPlugin implements PluginMessageListe
     private static ScoreboardDBPlugin instance;
     private BukkitRunnable syncTask;
     private int syncTaskId = -1;
+    private ScoreboardExpansion placeholderExpansion;
 
     private final AtomicReference<String> velocityServerName = new AtomicReference<>(null);
     private boolean velocityEnabled = false;
@@ -44,7 +45,23 @@ public class ScoreboardDBPlugin extends JavaPlugin implements PluginMessageListe
             getLogger().severe("PostgreSQL JDBC Driver not found! Ignore this error if use-local: true");
         }
         databaseManager.init();
-        getCommand("scoreboarddb").setExecutor(new ScoreboardDBCommand(this, databaseManager));
+        String serverName = getServerName();
+        databaseManager.populateScoreboardSettings(serverName);
+        ScoreboardDBCommand commandExecutor = new ScoreboardDBCommand(this, databaseManager);
+        getCommand("scoreboarddb").setExecutor(commandExecutor);
+        getCommand("scoreboarddb").setTabCompleter(commandExecutor);
+        
+        // Register PlaceholderAPI expansion if enabled
+        if (configLoader.isPlaceholdersEnabled()) {
+            if (Bukkit.getPluginManager().getPlugin("PlaceholderAPI") != null) {
+                placeholderExpansion = new ScoreboardExpansion(this, configLoader, databaseManager);
+                placeholderExpansion.register();
+                getLogger().info("PlaceholderAPI expansion registered!");
+            } else {
+                getLogger().warning("PlaceholderAPI is not installed! Placeholder support disabled.");
+            }
+        }
+        
         // Velocity plugin messaging
         Map<String, Object> velocity = configLoader.getVelocity();
         velocityEnabled = velocity != null && Boolean.TRUE.equals(velocity.getOrDefault("enabled", false));
@@ -53,6 +70,8 @@ public class ScoreboardDBPlugin extends JavaPlugin implements PluginMessageListe
             getServer().getMessenger().registerIncomingPluginChannel(this, "velocity:server", this);
             requestVelocityServerName();
         }
+
+        getServer().getPluginManager().registerEvents(new JoinListener(this), this);
         startSyncTask();
         getLogger().info("Plugin enabled!");
     }
@@ -172,38 +191,59 @@ public class ScoreboardDBPlugin extends JavaPlugin implements PluginMessageListe
         ScoreboardManager manager = Bukkit.getScoreboardManager();
         if (manager == null) return;
         Scoreboard scoreboard = manager.getMainScoreboard();
-        for (Objective obj : scoreboard.getObjectives()) {
-            String scoreboardName = obj.getName();
-            Set<String> entries = scoreboard.getEntries();
-            for (String entry : entries) {
-                // Only sync if this objective has a score for this entry
-                try {
-                    Score score = obj.getScore(entry);
-                    // Only push if the score is set for this objective/entry (avoid default 0s for all entries)
-                    if (!score.isScoreSet()) continue;
-                    double value = score.getScore();
-                    try (Connection conn = databaseManager.getDataSource().getConnection()) {
-                        String sql = "INSERT INTO scoreboard_data (server_name, scoreboard_name, string, value, push) VALUES (?, ?, ?, ?, ?) " +
-                                "ON CONFLICT(server_name, scoreboard_name, string) DO UPDATE SET value = excluded.value, push = excluded.push";
-                        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+        boolean onlineOnly = configLoader.isSyncOnlineOnly();
+        String upsertSql = databaseManager.getScoreboardDataUpsertSql();
+        try (Connection conn = databaseManager.getDataSource().getConnection()) {
+            try (PreparedStatement ps = conn.prepareStatement(upsertSql)) {
+                int count = 0;
+                for (Objective obj : scoreboard.getObjectives()) {
+                    String scoreboardName = obj.getName();
+
+                    // Check per-scoreboard mode
+                    try {
+                        String mode = databaseManager.getScoreboardMode(serverName, scoreboardName);
+                        if (mode.equals("pull")) {
+                            // This scoreboard is pull-only, skip push
+                            continue;
+                        }
+                    } catch (Exception e) {
+                        getLogger().warning("Failed to check mode for " + scoreboardName + ": " + e.getMessage());
+                    }
+
+                    Set<String> entries = scoreboard.getEntries();
+                    for (String entry : entries) {
+                        if (onlineOnly) {
+                            Player player = Bukkit.getPlayer(entry);
+                            if (player == null || !player.isOnline()) {
+                                continue;
+                            }
+                        }
+                        try {
+                            Score score = obj.getScore(entry);
+                            if (!score.isScoreSet()) continue;
+                            double value = score.getScore();
                             ps.setString(1, serverName);
                             ps.setString(2, scoreboardName);
                             ps.setString(3, entry);
                             ps.setDouble(4, value);
-                            ps.setBoolean(5, false); // When pushing from Minecraft, set push to false
-                            ps.executeUpdate();
+                            ps.setBoolean(5, true);
+                            ps.addBatch();
+                            count++;
+                        } catch (IllegalStateException ignore) {
+                            // Entry does not have a score for this objective, skip
                         }
                     }
-                } catch (IllegalStateException ignore) {
-                    // This entry does not have a score for this objective, skip
-                } catch (Exception e) {
-                    if (e.getMessage() != null && e.getMessage().toLowerCase().contains("relation \"scoreboard_data\" does not exist")) {
-                        databaseManager.ensureTableExists();
-                        getLogger().warning("Table was missing and has been created. Please try sync again.");
-                    } else {
-                        getLogger().warning("Failed to push scoreboard entry: " + e.getMessage());
-                    }
                 }
+                if (count > 0) {
+                    ps.executeBatch();
+                }
+            }
+        } catch (Exception e) {
+            if (e.getMessage() != null && e.getMessage().toLowerCase().contains("scoreboard_data")) {
+                databaseManager.ensureTableExists();
+                getLogger().warning("Table was missing and has been created. Please try sync again.");
+            } else {
+                getLogger().warning("Failed to push scoreboard entry: " + e.getMessage());
             }
         }
     }
@@ -220,6 +260,18 @@ public class ScoreboardDBPlugin extends JavaPlugin implements PluginMessageListe
                 try (ResultSet rs = ps.executeQuery()) {
                     while (rs.next()) {
                         String scoreboardName = rs.getString("scoreboard_name");
+                        
+                        // Check per-scoreboard mode
+                        try {
+                            String mode = databaseManager.getScoreboardMode(serverName, scoreboardName);
+                            if (mode.equals("push")) {
+                                // This scoreboard is push-only, skip pull
+                                continue;
+                            }
+                        } catch (Exception e) {
+                            getLogger().warning("Failed to check mode for " + scoreboardName + ": " + e.getMessage());
+                        }
+                        
                         String entry = rs.getString("string");
                         double value = rs.getDouble("value");
                         boolean push = rs.getBoolean("push");
@@ -240,5 +292,15 @@ public class ScoreboardDBPlugin extends JavaPlugin implements PluginMessageListe
             return velocityServerName.get();
         }
         return configLoader.getServerName();
+    }
+
+    public void refreshPlaceholders() {
+        if (placeholderExpansion != null) {
+            placeholderExpansion.refreshPlaceholders();
+        }
+    }
+
+    public ConfigLoader getConfigLoader() {
+        return configLoader;
     }
 }
